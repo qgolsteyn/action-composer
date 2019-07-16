@@ -2,7 +2,17 @@
   width: 100vw;
   height: 100vh;
 
+  background: #333;
+
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  grid-gap: 1px;
+}
+
+.cell {
   display: flex;
   justify-content: center;
   align-items: center;
+
+  background: #fff;
 }

@@ -6,7 +6,12 @@ import "./App.css";
 function App() {
   return (
     <div className="App">
-      <Counter VALUE_UPDATED={(count: number) => {}} />
+      <div className="cell">
+        <Counter />
+      </div>
+      <div className="cell">
+        <Counter />
+      </div>
     </div>
   );
 }
