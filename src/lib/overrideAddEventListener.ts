@@ -9,13 +9,10 @@ export const overrideAddEventListener = () => {
     if (eventHandler === null) return;
 
     let newEventHandler = eventHandler;
-    if (!eventName.match(/^react-/)) {
+    if (!eventName.match(/^react-/) && !eventName.match(/^message/)) {
       newEventHandler = function(e: Event) {
-        (window as any).events = [];
-        (window as any).events.push({ type: eventName, payload: e });
         if (typeof eventHandler === "function") eventHandler(e);
         else eventHandler.handleEvent(e);
-        console.table((window as any).events);
       };
     }
     oldAddEventListener.call(this, eventName, newEventHandler, options);
