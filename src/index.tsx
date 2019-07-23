@@ -1,10 +1,19 @@
-import React from "react";
-import ReactDOM from "react-dom";
-import "./index.css";
-import App from "./App";
-import { overrideAddEventListener } from "./lib/overrideAddEventListener";
+import { State } from "./lib/state";
 
-// The magic code
-overrideAddEventListener();
+const add = (s: number) => s + 1;
 
-ReactDOM.render(<App />, document.getElementById("root"));
+const state = new State(0);
+
+state.commit("master", add);
+state.commit("master", add);
+state.commit("master", add);
+
+state.branch("test", "master");
+
+state.commit("master", add);
+state.commit("master", add);
+
+console.log(state.resolve("master"));
+console.log(state.resolve("test"));
+
+console.log(state);
