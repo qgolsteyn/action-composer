@@ -1,68 +1,64 @@
 import { createStore } from "./lib";
 
-const store = createStore({
-  name: "",
-  text: "",
-  location: "",
-  author: ""
-});
-
-console.log(store.get("master"));
-
-store.commit(
-  s => ({
-    ...s,
-    text: "Hello World!"
-  }),
-  "master"
+const store = createStore(
+  (s = { name: "", text: "", location: "", author: "" }, a) => {
+    switch (a.type) {
+      case "SET_NAME":
+        return {
+          ...s,
+          name: a.payload
+        };
+      case "SET_AUTHOR":
+        return {
+          ...s,
+          author: a.payload
+        };
+      case "SET_TEXT":
+        return {
+          ...s,
+          text: a.payload
+        };
+      case "SET_LOCATION":
+        return {
+          ...s,
+          location: a.payload
+        };
+      default:
+        return s;
+    }
+  }
 );
 
-console.log(store.get("master"));
+console.log(store.get("main"));
 
-store.branch("editMetadata", "master");
+store.dispatch("main", "SET_TEXT", "Hello World!");
+
+console.log(store.get("main"));
+
+store.branch("editMetadata", "main");
 
 const name = "My home page";
 
 for (let i = 1; i < name.length; i++) {
-  store.commit(
-    s => ({
-      ...s,
-      name: name.substr(0, i)
-    }),
-    "editMetadata"
-  );
+  store.dispatch("editMetadata", "SET_NAME", name);
 }
 
 store.branch("editAuthor", "editMetadata");
 
-store.commit(
-  s => ({
-    ...s,
-    author: "Quentin"
-  }),
-  "editAuthor"
-);
+const hash = store.dispatch("editAuthor", "SET_AUTHOR", "Quentin");
 
-store.commit(
-  s => ({
-    ...s,
-    author: "Pierre"
-  }),
-  "editAuthor"
-);
+store.dispatch("editAuthor", "SET_AUTHOR", "Pierre");
 
 store.apply("editAuthor", "editMetadata");
 
-store.commit(
-  s => ({
-    ...s,
-    name: "My home page 2"
-  }),
-  "editMetadata"
-);
+store.dispatch("editMetadata", "SET_NAME", "My home page 2");
 
-console.log(store.get("master"));
+store.dispatch("main", "SET_LOCATION", "important.txt");
 
-store.apply("editMetadata", "master");
+console.log(store.get("main"));
 
-console.log(store.get("master"));
+store.apply("editMetadata", "main");
+
+console.log(store.get("main"));
+
+console.log(store.get(hash));

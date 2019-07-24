@@ -1,109 +1,111 @@
-export type Node = { [key: string]: Node | Leaf };
-export type Leaf = number | string | boolean;
-
-export interface Commit<T extends Node> {
+export interface Action {
   hash: string;
-  patch: (s: T) => T;
+  type: string;
+  payload: any;
   parent: string | undefined;
 }
 
-const createCommit = <T extends Node>(
-  patch: (s: T) => T,
-  parent: string | undefined
-): Commit<T> => {
+const createAction = (
+  parent: string | undefined,
+  type: string,
+  payload?: any
+): Action => {
   return {
     hash: hash(),
-    patch,
-    parent
+    parent,
+    type,
+    payload
   };
 };
 
-export interface Store<T extends Node> {
+export interface Store<T> {
   get: (from: string) => T;
-  commit: (patch: (s: T) => T, from: string) => string;
+  dispatch: (onto: string, type: string, payload?: any) => string;
   branch: (name: string, from: string) => void;
   apply: (from: string, onto: string) => void;
 }
 
-export const createStore = <T extends Node>(initialState: T) => {
-  const commits: { [hash: string]: Commit<T> } = {};
-  const branches: { [name: string]: string } = {};
+export const createStore = <T>(reducer: (s: T, action: Action) => T) => {
+  const actions: { [hash: string]: Action } = {};
+  const sequences: { [name: string]: string } = {};
 
   const normalizeToHash = (from: string) => {
-    if (commits[from] !== undefined) {
+    if (actions[from] !== undefined) {
       return from;
-    } else if (branches[from] !== undefined) {
-      return branches[from];
+    } else if (sequences[from] !== undefined) {
+      return sequences[from];
     } else {
-      throw new Error(`${from} is not a valid hash or branch name`);
+      throw new Error(`${from} is not a valid hash or sequence name`);
     }
   };
 
-  const updateBranch = (from: string, newHash: string) => {
-    if (branches[from] !== undefined) {
-      branches[from] = newHash;
+  const updateSequence = (from: string, newHash: string) => {
+    if (sequences[from] !== undefined) {
+      sequences[from] = newHash;
     }
   };
 
-  const findBranchHead = (from: string, onto: string) => {
+  const findSequenceHead = (from: string, onto: string) => {
     const visited: { [hash: string]: boolean } = {};
 
     let currentHash: string | undefined = onto;
     while (currentHash !== undefined) {
       visited[currentHash] = true;
-      currentHash = commits[currentHash].parent;
+      currentHash = actions[currentHash].parent;
     }
 
     currentHash = from;
     let childHash = null;
     while (!visited[currentHash]) {
       childHash = currentHash;
-      currentHash = commits[currentHash].parent;
+      currentHash = actions[currentHash].parent;
       if (currentHash === undefined) return null;
     }
 
     return childHash;
   };
 
-  const resolveCommit = (hash: string): T => {
-    const commit = commits[hash];
-    return commit.patch(
-      commit.parent !== undefined ? resolveCommit(commit.parent) : initialState
-    );
+  const resolveActions = (hash: string): T => {
+    const action = actions[hash];
+    const parentState =
+      action.parent !== undefined ? resolveActions(action.parent) : ({} as any);
+    return reducer(parentState, action);
   };
 
-  const initialCommit = createCommit((s: T) => s, undefined);
-  commits[initialCommit.hash] = initialCommit;
+  const initialAction = createAction(undefined, "INITIALIZE_STATE");
+  actions[initialAction.hash] = initialAction;
 
-  branches["master"] = initialCommit.hash;
+  sequences["main"] = initialAction.hash;
 
   const store: Store<T> = {
     get: from => {
       const hash = normalizeToHash(from);
-      return resolveCommit(hash);
+      return resolveActions(hash);
     },
-    commit: (patch, from) => {
-      const hash = normalizeToHash(from);
-      const commit = createCommit(patch, hash);
+    dispatch: (onto, type, payload) => {
+      const hash = normalizeToHash(onto);
+      const action = createAction(hash, type, payload);
 
-      commits[commit.hash] = commit;
+      actions[action.hash] = action;
 
-      updateBranch(from, commit.hash);
+      updateSequence(onto, action.hash);
 
-      return commit.hash;
+      return action.hash;
     },
     branch: (name, from) => {
-      branches[name] = branches[from];
+      sequences[name] = sequences[from];
     },
     apply: (from, onto) => {
       const hashFrom = normalizeToHash(from);
       const hashOnto = normalizeToHash(onto);
 
-      const head = findBranchHead(hashFrom, hashOnto);
+      const head = findSequenceHead(hashFrom, hashOnto);
 
       if (head !== null) {
-        commits[head].parent = hashOnto;
-        updateBranch(onto, hashFrom);
+        actions[head].parent = hashOnto;
+        updateSequence(onto, hashFrom);
+      } else {
+        console.warn(`Unable to apply ${from} to ${onto}`);
       }
     }
   };
