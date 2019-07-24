@@ -1,19 +1,68 @@
-import { State } from "./lib/state";
+import { createStore } from "./lib";
 
-const add = (s: number) => s + 1;
+const store = createStore({
+  name: "",
+  text: "",
+  location: "",
+  author: ""
+});
 
-const state = new State(0);
+console.log(store.get("master"));
 
-state.commit("master", add);
-state.commit("master", add);
-state.commit("master", add);
+store.commit(
+  s => ({
+    ...s,
+    text: "Hello World!"
+  }),
+  "master"
+);
 
-state.branch("test", "master");
+console.log(store.get("master"));
 
-state.commit("master", add);
-state.commit("master", add);
+store.branch("editMetadata", "master");
 
-console.log(state.resolve("master"));
-console.log(state.resolve("test"));
+const name = "My home page";
 
-console.log(state);
+for (let i = 1; i < name.length; i++) {
+  store.commit(
+    s => ({
+      ...s,
+      name: name.substr(0, i)
+    }),
+    "editMetadata"
+  );
+}
+
+store.branch("editAuthor", "editMetadata");
+
+store.commit(
+  s => ({
+    ...s,
+    author: "Quentin"
+  }),
+  "editAuthor"
+);
+
+store.commit(
+  s => ({
+    ...s,
+    author: "Pierre"
+  }),
+  "editAuthor"
+);
+
+store.apply("editAuthor", "editMetadata");
+
+store.commit(
+  s => ({
+    ...s,
+    name: "My home page 2"
+  }),
+  "editMetadata"
+);
+
+console.log(store.get("master"));
+
+store.apply("editMetadata", "master");
+
+console.log(store.get("master"));
